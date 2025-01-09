@@ -54,7 +54,8 @@ class KMeans:
         if self.init == 'random':
             idx = np.random.choice(len(X), self.k, replace=False)
             return X[idx].copy()
-        # 可以添加其他初始化策略
+        elif self.init == 'k-means++':
+            return self._kmeans_plus_plus_init(X)
         raise ValueError(f"Unknown initialization method: {self.init}")
 
     def _assign_clusters(self, X: np.ndarray, centroids: np.ndarray) -> np.ndarray:
@@ -71,3 +72,19 @@ class KMeans:
     def _compute_inertia(self, X: np.ndarray, labels: np.ndarray,
                          centroids: np.ndarray) -> float:
         return np.sum((X - centroids[labels]) ** 2)
+
+    def _kmeans_plus_plus_init(self, X: np.ndarray) -> np.ndarray:
+        """K-Means++ 初始化策略"""
+        centroids = np.empty((self.k, X.shape[1]))
+        # 1) 随机选择第一个质心
+        first_index = np.random.choice(len(X))
+        centroids[0] = X[first_index]
+
+        # 2) 后面的质心基于概率分布选取
+        for i in range(1, self.k):
+            distances = np.min([np.linalg.norm(X - c, axis=1)
+                               for c in centroids[:i]], axis=0)
+            probabilities = distances / np.sum(distances)
+            centroids[i] = X[np.random.choice(len(X), p=probabilities)]
+
+        return centroids

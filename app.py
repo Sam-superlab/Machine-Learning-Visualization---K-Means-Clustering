@@ -1,12 +1,17 @@
 import streamlit as st
 import plotly.express as px
 import numpy as np
+import pandas as pd
 from src.kmeans import KMeans
 from src.data_generator import DataGenerator
 
 st.title("K-Means Clustering Visualization")
 
-# 侧边栏参数
+# Initialize session state for current iteration
+if 'current_iter' not in st.session_state:
+    st.session_state.current_iter = 0
+
+# Sidebar parameters
 with st.sidebar:
     dataset = st.selectbox(
         "Select Dataset",
@@ -18,21 +23,21 @@ with st.sidebar:
 
     init_method = st.selectbox(
         "Initialization Method",
-        ["random", "k-means++"]
+        ["random", "k-means++"]  # Restore k-means++ option
     )
 
-# 生成数据
+# Generate data
 data_gen = DataGenerator()
 if dataset == "Gaussian Mixture":
     X = data_gen.gaussian_mixture(n_samples=300, centers=3)
 else:
     X = data_gen.circles(n_samples=300)
 
-# 执行聚类
+# Execute clustering
 kmeans = KMeans(k=k, max_iter=max_iter, init=init_method)
 states = kmeans.fit(X)
 
-# 创建动画帧
+# Create animation frames
 frames = []
 for state in states:
     df = pd.DataFrame({
@@ -41,7 +46,7 @@ for state in states:
         'Cluster': state.labels
     })
 
-    # 添加质心
+    # Add centroids
     centroids_df = pd.DataFrame({
         'x': state.centroids[:, 0],
         'y': state.centroids[:, 1],
@@ -51,18 +56,21 @@ for state in states:
     fig = px.scatter(df, x='x', y='y', color='Cluster',
                      title=f'Iteration {state.iteration}')
 
-    # 添加质心标记
+    # Add centroid markers
     fig.add_scatter(x=centroids_df['x'], y=centroids_df['y'],
                     mode='markers', marker_symbol='x',
                     marker_size=15, showlegend=False)
 
     frames.append(fig)
 
-# 显示动画控制器
-current_iter = st.slider("Iteration", 0, len(frames)-1, 0)
+# Display animation controller
+current_iter = st.slider("Iteration", 0, len(
+    frames)-1, st.session_state.current_iter)
+st.session_state.current_iter = current_iter  # Update session state
+
 st.plotly_chart(frames[current_iter])
 
-# 显示收敛曲线
+# Display convergence curve
 inertias = [state.inertia for state in states]
 fig_conv = px.line(y=inertias, title="Convergence Plot")
 st.plotly_chart(fig_conv)
